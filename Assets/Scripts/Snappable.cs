@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 using VRTK;
@@ -9,15 +10,20 @@ using VRTK;
 public class Snappable : MonoBehaviour {
     private SnapParent snapParentPrefab;
 
+    public Collider coll;
+
     private float _snapSpacing = 0.2f;
+
     private List<Joint> joints = new List<Joint>();
     private List<Snappable> connectedObjects = new List<Snappable>();
+    private List<SnapPoint> snapPoints;
 
-    private float speed = 1.0f;
-    
     // Use this for initialization
     void Start () {
         snapParentPrefab = (SnapParent)Resources.Load("Prefabs/SnapParent", typeof(SnapParent));
+        snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
+
+        coll = this.GetComponent<Collider>();
     }
 
     // Update is called once per frame
@@ -27,45 +33,26 @@ public class Snappable : MonoBehaviour {
 
     public void SnapPointCollision(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
     {
-        if (thisSnapPoint.transform.parent.GetInstanceID() == otherSnapPoint.transform.parent.GetInstanceID()) {
-            // don't connect us to ourself
-            return;
-        }
-
-        if (this.IsConnectedTo(otherSnapPoint.transform.parent.GetComponent<Snappable>())) {
-            // we're already connected
-            return;
-        }
+        if (thisSnapPoint.parent.GetInstanceID() == otherSnapPoint.parent.GetInstanceID()) return;
+        if (this.IsConnectedTo(otherSnapPoint.parent)) return;  // we're already connected
 
         UngrabAll();
 
-        DisableCollisionsBetweenSnapPoints(thisSnapPoint, otherSnapPoint);
+        DisableCollisions(thisSnapPoint, otherSnapPoint);
 
         this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
         this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
-    
+
         MakeJoint(thisSnapPoint, otherSnapPoint);
 
-        //StartCoroutine(AnimatedSnap(thisSnapPoint, otherSnapPoint, targetPosition, targetRotation));
-
-        connectedObjects.Add(otherSnapPoint.transform.parent.GetComponent<Snappable>());
-        Debug.Log(connectedObjects.Count + " connected objects");
+        connectedObjects.Add(otherSnapPoint.parent);
 
         //Debug.Log(this.transform.position + " " + otherSnapPoint.transform.parent.position + " " + otherSnapPoint.transform.parent.localPosition);
     }
 
-    //private IEnumerator AnimatedSnap(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint, Vector3 targetPosition, Quaternion targetRotation)
-    //{
-
-
-
-    //    float step = speed * Time.deltaTime;
-    //    transform.position = Vector3.MoveTowards(transform.position, targetPosition, step);
-    //    transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, step);
-    //}
-
     private void MakeJoint(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
     {
+        Debug.Log("making joint");
         var joint = this.gameObject.AddComponent<FixedJoint>();
         joint.connectedAnchor = thisSnapPoint.transform.position;
         joint.connectedBody = otherSnapPoint.transform.parent.GetComponent<Rigidbody>();
@@ -95,11 +82,21 @@ public class Snappable : MonoBehaviour {
         return otherSnapPointInverted * differenceBetweenUsAndOurSnapPoint;
     }
 
-    private static void DisableCollisionsBetweenSnapPoints(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
+    private void DisableCollisions(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
     {
-        // disable collisions
+        // make sure none of these two objects' snap points try to interact
+        foreach(SnapPoint s in this.snapPoints) {
+            foreach(SnapPoint t in otherSnapPoint.parent.snapPoints) {
+                Physics.IgnoreCollision(s.coll, t.coll);
+            }
+        }
+
+        // make sure the parent blocks also don't interact
+        Physics.IgnoreCollision(this.coll, otherSnapPoint.parent.coll);
+
+        // simply shut down the two which have connected
         thisSnapPoint.enabled = false;
-        otherSnapPoint.coll.enabled = false;
+        otherSnapPoint.enabled = false;
     }
 
     internal bool IsConnectedTo(Snappable snappable)

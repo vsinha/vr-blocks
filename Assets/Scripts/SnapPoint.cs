@@ -4,14 +4,21 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class SnapPoint : MonoBehaviour {
-    private bool didJustSnap;
+    private bool didJustSnap; // becomes unset, used to protect against handling the OnTriggerEnter twice
 
+    public bool isSnapped; // persistent
+
+    public Snappable parent;
     public SphereCollider coll;
-    public SnapPoint colliding = null;
 
     // Use this for initialization
     void Start () {
         coll = GetComponent<SphereCollider>();
+
+        parent = this.transform.parent.GetComponent<Snappable>();
+        if (parent == null) {
+            Debug.LogError("SnapPoint is not the child of a snappable object");
+        }
 	}
 	
 	void LateUpdate () {
@@ -21,47 +28,30 @@ public class SnapPoint : MonoBehaviour {
     private void OnTriggerEnter(Collider other)
     {
         var otherSnapPoint = other.gameObject.GetComponent<SnapPoint>();
-        colliding = otherSnapPoint;
 
-        if (otherSnapPoint != null && this.didJustSnap == false && !this.IsConnectedTo(other)) {
+        if (otherSnapPoint == null) return;                                         // not a snap point
+        if (this.isSnapped || otherSnapPoint.isSnapped) return;                     // connected already
+        if (this.parent.GetInstanceID() == otherSnapPoint.GetInstanceID()) return;  // attached to the same object
+
+        if (this.didJustSnap == false && !this.IsConnectedTo(other)) {
             // we collided with another snap point
 
             Debug.Log("trigger enter (" + this.name + " " + this.transform.parent.name + "), (" + other.name + " " + other.transform.parent.name + ")");
 
             // silence the other one
             otherSnapPoint.didJustSnap = true;
+            this.isSnapped = true;
+            otherSnapPoint.isSnapped = true;
 
             // call our snap handler
             this.transform.parent.GetComponent<Snappable>().SnapPointCollision(this, otherSnapPoint);
         }
     }
 
-    private void OnTriggerExit(Collider other)
-    {
-        colliding = null;
-    }
-
     private bool IsConnectedTo(Collider other)
     {
         return this.transform.parent.GetComponent<Snappable>().IsConnectedTo(other.transform.parent.GetComponent<Snappable>());
     }
-
-    //private SnapPoint ClosestSnapPoint(SnapPoint other)
-    //{
-    //    float minDist = float.MaxValue;
-    //    SnapPoint closest = null;
-
-    //    foreach (Transform snapPoint in this.transform.parent.transform) {
-
-    //        var distance = Vector3.Distance(snapPoint.position, other.transform.position);
-
-    //        if (distance < minDist) {
-    //            minDist = distance;
-    //            closest = snapPoint.GetComponent<SnapPoint>();
-    //        }
-    //    }
-    //    return closest;
-    //}
 
     private void OnTriggerStay(Collider other)
     {
