@@ -31,13 +31,8 @@ public class SnapPoint : MonoBehaviour {
             // silence the other one
             otherSnapPoint.didJustSnap = true;
 
-            //this.transform.parent.rotation = other.transform.parent.rotation;
-
-            //var q = this.transform.parent.rotation * this.transform.rotation;
-            //this.transform.rotation.SetLookRotation(q * other.transform.rotation.eulerAngles);
-
-            //// call our snap handler
-            //this.transform.parent.GetComponent<Snappable>().SnapPointCollision(this, otherSnapPoint);
+            // call our snap handler
+            this.transform.parent.GetComponent<Snappable>().SnapPointCollision(this, otherSnapPoint);
         }
     }
 
