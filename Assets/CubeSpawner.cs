@@ -37,7 +37,7 @@ public class CubeSpawner : MonoBehaviour {
     private void SpawnCube()
     {
         var controller = interactable.GetUsingObject();
-        var cube = Instantiate(cubePrefab, this.transform.position + this.transform.up * 0.01f, Quaternion.identity);
+        var cube = Instantiate(cubePrefab, this.transform.position + this.transform.up * 0.2f, Quaternion.identity);
         cube.GetComponent<Rigidbody>().angularVelocity = Vector3.one * 0.1f;
     }
 

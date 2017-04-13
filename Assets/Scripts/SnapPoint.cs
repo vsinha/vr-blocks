@@ -42,6 +42,7 @@ public class SnapPoint : MonoBehaviour {
             otherSnapPoint.didJustSnap = true;
             otherSnapPoint.isSnapped = true;
             this.isSnapped = true;
+            this.didJustSnap = true;
 
             // call our snap handler
             Debug.Log(this.parentSnappable.name + " snapping to " + otherSnapPoint.parentSnappable.name);

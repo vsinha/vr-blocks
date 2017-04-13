@@ -10,17 +10,23 @@ public class QuaternionTest : MonoBehaviour {
     public GameObject thisSnapPoint;
     private Quaternion toRotation;
     private Quaternion fromRotation;
-    private float speed = 1f;
 
     // Use this for initialization
-    void Start () {
-
+    void Start ()
+    {
         Debug.Log("this: " + this.transform.eulerAngles);
         Debug.Log("otherSnapPoint: " + otherSnapPoint.transform.eulerAngles);
 
         // take the opposite of the snap point we intend to snap to
-        // change this for red axis
         var otherSnapPointInverted = otherSnapPoint.transform.rotation * Quaternion.Euler(180, 0, 0);
+
+        // generate 4 possible rotations around the snap point axis, each 90 degrees apart
+        List<Quaternion> otherSnapPointOptions = new List<Quaternion>();
+        for (var i = 0; i < 4; i++) {
+            otherSnapPointOptions.Add(otherSnapPointInverted * Quaternion.Euler(0, 90f * i, 0));
+        }
+        
+        otherSnapPointInverted = MinRotationDistance(thisSnapPoint.transform.rotation, otherSnapPointOptions);
 
         Debug.Log("otherSnapPointInverted: " + otherSnapPointInverted.eulerAngles);
 
@@ -30,42 +36,32 @@ public class QuaternionTest : MonoBehaviour {
         Debug.Log("differenceBetweenUsAndOurSnapPoint: " + otherSnapPointInverted.eulerAngles);
 
         // apply the combined rotation
-
         fromRotation = transform.rotation;
         toRotation = otherSnapPointInverted * differenceBetweenUsAndOurSnapPoint;
 
-        var toE = toRotation.eulerAngles;
-
-        Debug.Log("toE" + toE);
-
-        var outputRotation = new Vector3(toE.x + Closest90(Mathf.Abs(this.transform.eulerAngles.x - toE.x)), toE.y, toE.z);
-
-        if (Mathf.Abs(this.transform.rotation.x - toE.x) > 180) {
-            Debug.Log("second correction");
-            outputRotation = new Vector3(Mathf.Abs(toE.x + 90f), toE.y, toE.z);
-        }
-
-        this.transform.rotation = Quaternion.Euler(outputRotation);
-        Debug.Log("this again: " + this.transform.eulerAngles);
+        this.transform.rotation = toRotation;
     }
 
-    private float Closest90(float x)
+    private Quaternion MinRotationDistance(Quaternion ourRotation, List<Quaternion> options)
     {
-        float y;
+        var distance = float.MaxValue;
+        Quaternion selection = ourRotation;
+        int selectionIndex = -1;
 
-        if (x <= 45)                     y = 0f;
-        else if (x > 45 && x <= 135)     y = 90f;
-        else if (x > 135 && x <= 225)    y = 180f;
-        else if (x > 225 && x <= 315)    y = 270f;
-        else                             y = 0;    // (x > 315 && x <= 360)
+        for (var i = 0; i < options.Count; i++) {
+            var d = Quaternion.Angle(ourRotation, options[i]);
+            if (d < distance) {
+                distance = d;
+                selection = options[i];
+                selectionIndex = i;
+            }
+        }
 
-        Debug.Log("closest 90 of " + x + " is " + y);
-
-        return y;
+        Debug.Log("selected rotation " + selectionIndex);
+        return selection;
     }
 
     // Update is called once per frame
     void Update () {
-        //this.transform.rotation = Quaternion.Slerp(fromRotation, toRotation, Time.time * speed);
     }
 }

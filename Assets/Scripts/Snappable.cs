@@ -14,12 +14,17 @@ public class Snappable : MonoBehaviour {
     private List<Joint> joints = new List<Joint>();
     //private List<Snappable> connectedObjects = new List<Snappable>();
     private List<SnapPoint> snapPoints;
+    private AudioClip blockSnapAudio;
+    private SnapIndicator snapIndicatorPrefab;
 
     // Use this for initialization
     void Start () {
-        snapParentPrefab = (SnapParent)Resources.Load("Prefabs/SnapParent", typeof(SnapParent));
-        snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
 
+        snapParentPrefab = (SnapParent)Resources.Load("Prefabs/SnapParent", typeof(SnapParent));
+        snapIndicatorPrefab = (SnapIndicator)Resources.Load("Prefabs/SnapCylinder", typeof(SnapIndicator));
+        blockSnapAudio = (AudioClip)Resources.Load("Sounds/snap1", typeof(AudioClip));
+
+        snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
     }
 
     // Update is called once per frame
@@ -38,6 +43,11 @@ public class Snappable : MonoBehaviour {
     {
         if (thisSnapPoint.parentSnappable.GetInstanceID() == otherSnapPoint.parentSnappable.GetInstanceID()) return;
         //if (this.IsConnectedTo(otherSnapPoint.parentSnappable)) return;  // we're already connected
+
+        AudioSource.PlayClipAtPoint(blockSnapAudio, thisSnapPoint.transform.position, 1f);
+
+        var cylinder = Instantiate(snapIndicatorPrefab);
+        cylinder.Initialize(thisSnapPoint.transform, otherSnapPoint.transform);
 
         UnGrab(this);
         UnGrab(otherSnapPoint.parentSnappable);
@@ -103,15 +113,41 @@ public class Snappable : MonoBehaviour {
 
     private Quaternion RotateToMatchSnapPoints(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
     {
-        // take the opposite of the snap point we intend to snap to
-        // change this for red axis
-        var otherSnapPointInverted = otherSnapPoint.transform.rotation * Quaternion.Euler(0, 180, 0);
-
         // take the difference between our rotation and the rotation of our snap point
         var differenceBetweenUsAndOurSnapPoint = Quaternion.Inverse(thisSnapPoint.transform.rotation) * this.transform.rotation;
 
+        // take the opposite of the snap point we intend to snap to
+        // change this for red axis
+        var otherSnapPointInverted = otherSnapPoint.transform.rotation * Quaternion.Euler(0, 180f, 0);
+
+        // generate 4 possible rotations around the snap point axis, each 90 degrees apart
+        List<Quaternion> otherSnapPointOptions = new List<Quaternion>();
+        for (var i = 0; i < 4; i++) {
+            otherSnapPointOptions.Add(otherSnapPointInverted * Quaternion.Euler(90f * i, 0, 0));
+        }
+
+        var selectedSnapPointRotation = MinRotationDistance(thisSnapPoint.transform.rotation, otherSnapPointOptions);
+
         // combine the rotation
-        return otherSnapPointInverted * differenceBetweenUsAndOurSnapPoint;
+        return selectedSnapPointRotation * differenceBetweenUsAndOurSnapPoint;
+    }
+
+    internal Quaternion MinRotationDistance(Quaternion ourRotation, List<Quaternion> options)
+    {
+        var distance = float.MaxValue;
+        Quaternion selection = ourRotation;
+        int selectionIndex = -1;
+
+        for (var i = 0; i < options.Count; i++) {
+            var d = Quaternion.Angle(ourRotation, options[i]);
+            if (d < distance) {
+                distance = d;
+                selection = options[i];
+                selectionIndex = i;
+            }
+        }
+
+        return selection;
     }
 
     //private void DisableSnapPointInteractions(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
