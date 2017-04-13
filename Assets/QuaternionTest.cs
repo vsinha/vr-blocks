@@ -35,9 +35,17 @@ public class QuaternionTest : MonoBehaviour {
         toRotation = otherSnapPointInverted * differenceBetweenUsAndOurSnapPoint;
 
         var toE = toRotation.eulerAngles;
-        toRotation.eulerAngles = new Vector3(toE.x + Closest90(Mathf.Abs(toE.x - this.transform.eulerAngles.x)), toE.y, toE.z);
 
-        this.transform.rotation = toRotation;
+        Debug.Log("toE" + toE);
+
+        var outputRotation = new Vector3(toE.x + Closest90(Mathf.Abs(this.transform.eulerAngles.x - toE.x)), toE.y, toE.z);
+
+        if (Mathf.Abs(this.transform.rotation.x - toE.x) > 180) {
+            Debug.Log("second correction");
+            outputRotation = new Vector3(Mathf.Abs(toE.x + 90f), toE.y, toE.z);
+        }
+
+        this.transform.rotation = Quaternion.Euler(outputRotation);
         Debug.Log("this again: " + this.transform.eulerAngles);
     }
 
@@ -45,7 +53,7 @@ public class QuaternionTest : MonoBehaviour {
     {
         float y;
 
-        if (x <= 45)                     y = 180f;
+        if (x <= 45)                     y = 0f;
         else if (x > 45 && x <= 135)     y = 90f;
         else if (x > 135 && x <= 225)    y = 180f;
         else if (x > 225 && x <= 315)    y = 270f;
