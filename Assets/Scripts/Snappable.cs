@@ -44,27 +44,23 @@ public class Snappable : MonoBehaviour {
         if (thisSnapPoint.parentSnappable.GetInstanceID() == otherSnapPoint.parentSnappable.GetInstanceID()) return;
         //if (this.IsConnectedTo(otherSnapPoint.parentSnappable)) return;  // we're already connected
 
+        // sound
         AudioSource.PlayClipAtPoint(blockSnapAudio, thisSnapPoint.transform.position, 1f);
 
+        // join indicator
         var cylinder = Instantiate(snapIndicatorPrefab);
         cylinder.Initialize(thisSnapPoint.transform, otherSnapPoint.transform);
 
+        // prepare for move
         UnGrab(this);
         UnGrab(otherSnapPoint.parentSnappable);
-
         DisableSnapPointInteractions(this, otherSnapPoint.parentSnappable);
 
+        // move & rotate
         this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
         this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
 
-        // make the other block a child of our parent block
-        //otherSnapPoint.parent.transform.SetParent(null);
-
-        Debug.Log("we have " + this.transform.childCount + " children");
-        for (var i = 0; i < this.transform.childCount; i++) {
-            Debug.Log("child " + i + " = " + this.transform.GetChild(i).name);
-        }
-
+        // reparent all children
         this.ReparentChildren(otherSnapPoint.parentSnappable.transform);
     }
 
@@ -79,8 +75,6 @@ public class Snappable : MonoBehaviour {
         }
 
         foreach(Transform child in children) {
-            Debug.Log("reparenting " + child.name);
-
             child.SetParent(newParent);
 
             foreach (Transform s in child) {
@@ -92,23 +86,24 @@ public class Snappable : MonoBehaviour {
         }
     }
 
-    private void MakeJoint(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
-    {
-        Debug.Log("making joint");
-        var joint = this.gameObject.AddComponent<FixedJoint>();
-        joint.connectedAnchor = thisSnapPoint.transform.position;
-        joint.connectedBody = otherSnapPoint.transform.parent.GetComponent<Rigidbody>();
-        joints.Add(joint);
-    }
+    //private void MakeJoint(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
+    //{
+    //    Debug.Log("making joint");
+    //    var joint = this.gameObject.AddComponent<FixedJoint>();
+    //    joint.connectedAnchor = thisSnapPoint.transform.position;
+    //    joint.connectedBody = otherSnapPoint.transform.parent.GetComponent<Rigidbody>();
+    //    joints.Add(joint);
+    //}
 
     private Vector3 MoveToMatchSnapPoints(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint, float spacing)
     {
         // move us to the other snap point
         var a = this.transform.position;
         var b = thisSnapPoint.transform.position;
-        float dist = Vector3.Distance(a, b);
         var c = otherSnapPoint.transform.position;
-        return c - thisSnapPoint.transform.right * (dist * (1 + spacing));
+        var finalPosition = a + (c - b);
+
+        return finalPosition;
     }
 
     private Quaternion RotateToMatchSnapPoints(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
