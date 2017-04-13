@@ -6,16 +6,13 @@ using UnityEngine;
 
 using VRTK;
 
-[RequireComponent(typeof(VRTK_InteractableObject))]
 public class Snappable : MonoBehaviour {
     private SnapParent snapParentPrefab;
-
-    public Collider coll;
 
     private float _snapSpacing = 0.2f;
 
     private List<Joint> joints = new List<Joint>();
-    private List<Snappable> connectedObjects = new List<Snappable>();
+    //private List<Snappable> connectedObjects = new List<Snappable>();
     private List<SnapPoint> snapPoints;
 
     // Use this for initialization
@@ -23,7 +20,6 @@ public class Snappable : MonoBehaviour {
         snapParentPrefab = (SnapParent)Resources.Load("Prefabs/SnapParent", typeof(SnapParent));
         snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
 
-        coll = this.GetComponent<Collider>();
     }
 
     // Update is called once per frame
@@ -31,23 +27,59 @@ public class Snappable : MonoBehaviour {
 
     }
 
+    private void LateUpdate()
+    {
+        if (transform.childCount == 0) {
+            Destroy(this.gameObject);
+        }
+    }
+
     public void SnapPointCollision(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
     {
-        if (thisSnapPoint.parent.GetInstanceID() == otherSnapPoint.parent.GetInstanceID()) return;
-        if (this.IsConnectedTo(otherSnapPoint.parent)) return;  // we're already connected
+        if (thisSnapPoint.parentSnappable.GetInstanceID() == otherSnapPoint.parentSnappable.GetInstanceID()) return;
+        //if (this.IsConnectedTo(otherSnapPoint.parentSnappable)) return;  // we're already connected
 
-        UngrabAll();
+        UnGrab(this);
+        UnGrab(otherSnapPoint.parentSnappable);
 
-        DisableCollisions(thisSnapPoint, otherSnapPoint);
+        DisableSnapPointInteractions(this, otherSnapPoint.parentSnappable);
 
         this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
         this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
 
-        MakeJoint(thisSnapPoint, otherSnapPoint);
+        // make the other block a child of our parent block
+        //otherSnapPoint.parent.transform.SetParent(null);
 
-        connectedObjects.Add(otherSnapPoint.parent);
+        Debug.Log("we have " + this.transform.childCount + " children");
+        for (var i = 0; i < this.transform.childCount; i++) {
+            Debug.Log("child " + i + " = " + this.transform.GetChild(i).name);
+        }
 
-        //Debug.Log(this.transform.position + " " + otherSnapPoint.transform.parent.position + " " + otherSnapPoint.transform.parent.localPosition);
+        this.ReparentChildren(otherSnapPoint.parentSnappable.transform);
+    }
+
+    private void ReparentChildren(Transform newParent)
+    {
+        // as we remove items from the original list of children, the list changes size
+        // keep our own List of references and iterate over that
+        List<Transform> children = new List<Transform>();
+
+        for (var i = 0; i < this.transform.childCount; i++) {
+            children.Add(this.transform.GetChild(i));
+        }
+
+        foreach(Transform child in children) {
+            Debug.Log("reparenting " + child.name);
+
+            child.SetParent(newParent);
+
+            foreach (Transform s in child) {
+                var snapPoint = s.GetComponent<SnapPoint>();
+                if (snapPoint != null) {
+                    snapPoint.UpdateParentRef();
+                }
+            }
+        }
     }
 
     private void MakeJoint(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
@@ -82,40 +114,41 @@ public class Snappable : MonoBehaviour {
         return otherSnapPointInverted * differenceBetweenUsAndOurSnapPoint;
     }
 
-    private void DisableCollisions(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
+    //private void DisableSnapPointInteractions(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
+    //{
+    //    // make sure none of these two objects' snap points try to interact
+    //    foreach(SnapPoint s in this.snapPoints) {
+    //        foreach(SnapPoint t in otherSnapPoint.parentSnappable.snapPoints) {
+    //            Physics.IgnoreCollision(s.coll, t.coll);
+    //            //Physics.IgnoreCollision(s.transform.parent.GetComponent<Collider>(), t.transform.parent.GetComponent<Collider>());
+    //        }
+    //    }
+
+    //    // make sure the parent blocks also don't interact
+    //    //Physics.IgnoreCollision(this.coll, otherSnapPoint.parentSnappable.coll);
+
+    //    // simply shut down the two which have connected
+    //    thisSnapPoint.enabled = false;
+    //    otherSnapPoint.enabled = false;
+    //}
+
+    private void DisableSnapPointInteractions(Snappable s1, Snappable s2)
     {
-        // make sure none of these two objects' snap points try to interact
-        foreach(SnapPoint s in this.snapPoints) {
-            foreach(SnapPoint t in otherSnapPoint.parent.snapPoints) {
-                Physics.IgnoreCollision(s.coll, t.coll);
+        var c1 = GetComponentsInChildren<SnapPoint>();
+        var c2 = GetComponentsInChildren<SnapPoint>();
+
+        for (var i = 0; i < c1.Length; i++) {
+            for (var j = 0; j < c2.Length; j++) {
+                Physics.IgnoreCollision(c1[i].coll, c2[j].coll);
             }
         }
-
-        // make sure the parent blocks also don't interact
-        Physics.IgnoreCollision(this.coll, otherSnapPoint.parent.coll);
-
-        // simply shut down the two which have connected
-        thisSnapPoint.enabled = false;
-        otherSnapPoint.enabled = false;
     }
 
-    internal bool IsConnectedTo(Snappable snappable)
-    {
-        return connectedObjects.Contains(snappable);
-    }
-
-    private void UngrabAll()
-    {
-        UnGrab(this);
-
-        foreach(Snappable obj in connectedObjects) {
-            UnGrab(obj);
-        }
-    }
-
-    private void UnGrab(Snappable obj)
+    public void UnGrab(Snappable obj)
     {
         var interactable = obj.GetComponent<VRTK_InteractableObject>();
+
+        if (interactable == null) return;
 
         var grabber = interactable.GetGrabbingObject();
         if (grabber != null) {

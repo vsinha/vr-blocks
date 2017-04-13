@@ -18,7 +18,7 @@ public class CubeSpawner : MonoBehaviour {
         interactable.InteractableObjectUntouched += Interactable_InteractableObjectUntouched;
         interactable.InteractableObjectTouched += Interactable_InteractableObjectTouched;
 
-        cubePrefab = (GameObject)Resources.Load("Prefabs/SnappableCube", typeof(GameObject));
+        cubePrefab = (GameObject)Resources.Load("Prefabs/ParentedBlock", typeof(GameObject));
 	}
 
     private void Interactable_InteractableObjectTouched(object sender, InteractableObjectEventArgs e)
