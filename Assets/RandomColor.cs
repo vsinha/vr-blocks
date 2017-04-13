@@ -9,7 +9,7 @@ public class RandomColor : MonoBehaviour {
         Color.red,
         Color.green,
         Color.blue,
-        Color.white
+        Color.yellow
     };
 
     public Color SelectRandomColor()
