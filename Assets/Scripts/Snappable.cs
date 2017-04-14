@@ -6,30 +6,49 @@ using UnityEngine;
 
 using VRTK;
 
+[RequireComponent(typeof(VRTK_InteractableObject))]
 public class Snappable : MonoBehaviour {
-    private SnapParent snapParentPrefab;
 
     private float _snapSpacing = 0.2f;
+    private float _throwThresholdVelocity = 2.0f;
+    private float _detonationDistance = 10.0f;
 
-    private List<Joint> joints = new List<Joint>();
-    //private List<Snappable> connectedObjects = new List<Snappable>();
     private List<SnapPoint> snapPoints;
+
     private AudioClip blockSnapAudio;
-    private SnapIndicator snapIndicatorPrefab;
+    //private SnapIndicator snapIndicatorPrefab;
+    private SnapParent snapParentPrefab;
+
+    private VRTK_InteractableObject interactable;
+    private Rigidbody rb;
+    private bool wasThrown = false;
 
     // Use this for initialization
     void Start () {
+        rb = this.GetComponent<Rigidbody>();
+        interactable = this.GetComponent<VRTK_InteractableObject>();
+        interactable.InteractableObjectUngrabbed += Interactable_InteractableObjectUngrabbed;
 
         snapParentPrefab = (SnapParent)Resources.Load("Prefabs/SnapParent", typeof(SnapParent));
-        snapIndicatorPrefab = (SnapIndicator)Resources.Load("Prefabs/SnapCylinder", typeof(SnapIndicator));
+        //snapIndicatorPrefab = (SnapIndicator)Resources.Load("Prefabs/SnapCylinder", typeof(SnapIndicator));
         blockSnapAudio = (AudioClip)Resources.Load("Sounds/snap1", typeof(AudioClip));
 
         snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
     }
 
+
+    private void Interactable_InteractableObjectUngrabbed(object sender, InteractableObjectEventArgs e)
+    {
+        if (rb.velocity.magnitude > _throwThresholdVelocity) {
+            rb.drag = 0f;
+            rb.angularDrag = 0.05f;
+            wasThrown = true;
+        }
+    }
+
     // Update is called once per frame
     void Update () {
-
+         Detonate();
     }
 
     private void LateUpdate()
@@ -41,20 +60,19 @@ public class Snappable : MonoBehaviour {
 
     public void SnapPointCollision(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint)
     {
-        if (thisSnapPoint.parentSnappable.GetInstanceID() == otherSnapPoint.parentSnappable.GetInstanceID()) return;
-        //if (this.IsConnectedTo(otherSnapPoint.parentSnappable)) return;  // we're already connected
-
         // sound
         AudioSource.PlayClipAtPoint(blockSnapAudio, thisSnapPoint.transform.position, 1f);
 
-        // join indicator
-        var cylinder = Instantiate(snapIndicatorPrefab);
-        cylinder.Initialize(thisSnapPoint.transform, otherSnapPoint.transform);
+        //// join indicator
+        //var cylinder = Instantiate(snapIndicatorPrefab);
+        //cylinder.Initialize(thisSnapPoint.transform, otherSnapPoint.transform);
 
         // prepare for move
         UnGrab(this);
         UnGrab(otherSnapPoint.parentSnappable);
-        DisableSnapPointInteractions(this, otherSnapPoint.parentSnappable);
+
+        // disable interaction between the two snap points
+        Physics.IgnoreCollision(thisSnapPoint.coll, otherSnapPoint.coll);
 
         // move & rotate
         this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
@@ -62,7 +80,9 @@ public class Snappable : MonoBehaviour {
 
         // reparent all children
         this.ReparentChildren(otherSnapPoint.parentSnappable.transform);
+
     }
+
 
     private void ReparentChildren(Transform newParent)
     {
@@ -80,7 +100,7 @@ public class Snappable : MonoBehaviour {
             foreach (Transform s in child) {
                 var snapPoint = s.GetComponent<SnapPoint>();
                 if (snapPoint != null) {
-                    snapPoint.UpdateParentRef();
+                    snapPoint.UpdateParentSnappableRef();
                 }
             }
         }
@@ -163,17 +183,18 @@ public class Snappable : MonoBehaviour {
     //    otherSnapPoint.enabled = false;
     //}
 
-    private void DisableSnapPointInteractions(Snappable s1, Snappable s2)
-    {
-        var c1 = GetComponentsInChildren<SnapPoint>();
-        var c2 = GetComponentsInChildren<SnapPoint>();
+    //private void DisableSnapPointInteractions(Snappable s1, Snappable s2)
+    //{
 
-        for (var i = 0; i < c1.Length; i++) {
-            for (var j = 0; j < c2.Length; j++) {
-                Physics.IgnoreCollision(c1[i].coll, c2[j].coll);
-            }
-        }
-    }
+    //    //var c1 = GetComponentsInChildren<SnapPoint>();
+    //    //var c2 = GetComponentsInChildren<SnapPoint>();
+
+    //    //for (var i = 0; i < c1.Length; i++) {
+    //    //    for (var j = 0; j < c2.Length; j++) {
+    //    //        Physics.IgnoreCollision(c1[i].coll, c2[j].coll);
+    //    //    }
+    //    //}
+    //}
 
     public void UnGrab(Snappable obj)
     {
@@ -184,6 +205,38 @@ public class Snappable : MonoBehaviour {
         var grabber = interactable.GetGrabbingObject();
         if (grabber != null) {
             grabber.GetComponent<VRTK_InteractGrab>().ForceRelease();
+        }
+    }
+
+
+    internal bool IsGrabbed()
+    {
+        return interactable.IsGrabbed();
+    }
+
+    internal void Detonate()
+    {
+        // if we've been thrown
+        if (wasThrown && this.transform.position.magnitude > _detonationDistance) {
+
+            Debug.Log("detonating");
+
+            // unparent all our children
+            List<Transform> children = new List<Transform>();
+
+            for (var i = 0; i < this.transform.childCount; i++) {
+                children.Add(this.transform.GetChild(i));
+            }
+
+            foreach (Transform child in children) {
+                Debug.Log("unparenting");
+                var rb = child.gameObject.AddComponent<Rigidbody>();
+                rb.useGravity = false;
+                rb.AddExplosionForce(1000f, this.transform.position, 2f);
+                child.transform.SetParent(null);
+            }
+
+            Destroy(this);
         }
     }
 }

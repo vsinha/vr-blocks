@@ -15,7 +15,7 @@ public class SnapPoint : MonoBehaviour {
     void Start () {
         coll = GetComponent<SphereCollider>();
 
-        UpdateParentRef();
+        UpdateParentSnappableRef();
 
         if (parentSnappable == null) {
             Debug.LogError("SnapPoint is not the child of a snappable object");
@@ -32,9 +32,9 @@ public class SnapPoint : MonoBehaviour {
 
         if (otherSnapPoint == null) return;                                         // not a snap point
         if (this.isSnapped || otherSnapPoint.isSnapped) return;                     // connected already
-        //if (this.parentSnappable.GetInstanceID() == otherSnapPoint.GetInstanceID()) return;  // attached to the same object
+        if (this.parentSnappable.GetInstanceID() == otherSnapPoint.parentSnappable.GetInstanceID()) return; // attached to the same object
 
-        if (this.didJustSnap == false ) { //&& !this.IsConnectedTo(otherSnapPoint)) {
+        if (this.parentSnappable.IsGrabbed() && this.didJustSnap == false) { //&& !this.IsConnectedTo(otherSnapPoint)) {
             // we collided with another snap point
             Debug.Log("trigger enter (" + this.name + " " + this.transform.parent.name + "), (" + other.name + " " + other.transform.parent.name + ")");
 
@@ -50,7 +50,7 @@ public class SnapPoint : MonoBehaviour {
         }
     }
 
-    public void UpdateParentRef()
+    public void UpdateParentSnappableRef()
     {
         parentSnappable = this.transform.GetComponentInParent<Snappable>(); // grandparent
     }
