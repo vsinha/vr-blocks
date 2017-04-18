@@ -16,6 +16,8 @@ public class Snappable : MonoBehaviour {
     private List<SnapPoint> snapPoints;
 
     private AudioClip blockSnapAudio;
+    private AudioClip detonationAudio;
+
     //private SnapIndicator snapIndicatorPrefab;
     private SnapParent snapParentPrefab;
 
@@ -32,6 +34,7 @@ public class Snappable : MonoBehaviour {
         snapParentPrefab = (SnapParent)Resources.Load("Prefabs/SnapParent", typeof(SnapParent));
         //snapIndicatorPrefab = (SnapIndicator)Resources.Load("Prefabs/SnapCylinder", typeof(SnapIndicator));
         blockSnapAudio = (AudioClip)Resources.Load("Sounds/snap1", typeof(AudioClip));
+        detonationAudio = (AudioClip)Resources.Load("Sounds/explosion", typeof(AudioClip));
 
         snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
     }
@@ -220,6 +223,9 @@ public class Snappable : MonoBehaviour {
         if (wasThrown && this.transform.position.magnitude > _detonationDistance) {
 
             Debug.Log("detonating");
+
+            AudioSource.PlayClipAtPoint(detonationAudio, this.transform.position, 1f);
+
 
             // unparent all our children
             List<Transform> children = new List<Transform>();
