@@ -8,15 +8,16 @@ public class SnapPoint : MonoBehaviour {
 
     public bool isSnapped; // persistent
 
-    public Snappable parent;
+    public Snappable parentSnappable;
     public SphereCollider coll;
 
     // Use this for initialization
     void Start () {
         coll = GetComponent<SphereCollider>();
 
-        parent = this.transform.parent.GetComponent<Snappable>();
-        if (parent == null) {
+        UpdateParentRef();
+
+        if (parentSnappable == null) {
             Debug.LogError("SnapPoint is not the child of a snappable object");
         }
 	}
@@ -31,26 +32,27 @@ public class SnapPoint : MonoBehaviour {
 
         if (otherSnapPoint == null) return;                                         // not a snap point
         if (this.isSnapped || otherSnapPoint.isSnapped) return;                     // connected already
-        if (this.parent.GetInstanceID() == otherSnapPoint.GetInstanceID()) return;  // attached to the same object
+        //if (this.parentSnappable.GetInstanceID() == otherSnapPoint.GetInstanceID()) return;  // attached to the same object
 
-        if (this.didJustSnap == false && !this.IsConnectedTo(other)) {
+        if (this.didJustSnap == false ) { //&& !this.IsConnectedTo(otherSnapPoint)) {
             // we collided with another snap point
-
             Debug.Log("trigger enter (" + this.name + " " + this.transform.parent.name + "), (" + other.name + " " + other.transform.parent.name + ")");
 
             // silence the other one
             otherSnapPoint.didJustSnap = true;
-            this.isSnapped = true;
             otherSnapPoint.isSnapped = true;
+            this.isSnapped = true;
+            this.didJustSnap = true;
 
             // call our snap handler
-            this.transform.parent.GetComponent<Snappable>().SnapPointCollision(this, otherSnapPoint);
+            Debug.Log(this.parentSnappable.name + " snapping to " + otherSnapPoint.parentSnappable.name);
+            this.parentSnappable.SnapPointCollision(this, otherSnapPoint);
         }
     }
 
-    private bool IsConnectedTo(Collider other)
+    public void UpdateParentRef()
     {
-        return this.transform.parent.GetComponent<Snappable>().IsConnectedTo(other.transform.parent.GetComponent<Snappable>());
+        parentSnappable = this.transform.GetComponentInParent<Snappable>(); // grandparent
     }
 
     private void OnTriggerStay(Collider other)

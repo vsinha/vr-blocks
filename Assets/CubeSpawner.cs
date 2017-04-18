@@ -18,7 +18,7 @@ public class CubeSpawner : MonoBehaviour {
         interactable.InteractableObjectUntouched += Interactable_InteractableObjectUntouched;
         interactable.InteractableObjectTouched += Interactable_InteractableObjectTouched;
 
-        cubePrefab = (GameObject)Resources.Load("Prefabs/SnappableCube", typeof(GameObject));
+        cubePrefab = (GameObject)Resources.Load("Prefabs/ParentedBlock", typeof(GameObject));
 	}
 
     private void Interactable_InteractableObjectTouched(object sender, InteractableObjectEventArgs e)
@@ -37,7 +37,7 @@ public class CubeSpawner : MonoBehaviour {
     private void SpawnCube()
     {
         var controller = interactable.GetUsingObject();
-        var cube = Instantiate(cubePrefab, this.transform.position + this.transform.up * 0.01f, Quaternion.identity);
+        var cube = Instantiate(cubePrefab, this.transform.position + this.transform.up * 0.2f, Quaternion.identity);
         cube.GetComponent<Rigidbody>().angularVelocity = Vector3.one * 0.1f;
     }
 
