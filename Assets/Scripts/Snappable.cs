@@ -9,6 +9,8 @@ using VRTK;
 [RequireComponent(typeof(VRTK_InteractableObject))]
 public class Snappable : MonoBehaviour {
 
+	public SnapBehaviour SnapBehaviour = SnapBehaviour.Default;
+
     private float _snapSpacing = 0.2f;
     private float _throwThresholdVelocity = 2.0f;
     private float _detonationDistance = 10.0f;
@@ -77,14 +79,35 @@ public class Snappable : MonoBehaviour {
         // disable interaction between the two snap points
         Physics.IgnoreCollision(thisSnapPoint.coll, otherSnapPoint.coll);
 
-        // move & rotate
-       // this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
-        this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
+        // Perform snap 
+		this.PerformSnapBehaviour (thisSnapPoint, otherSnapPoint);
 
         // reparent all children
         this.ReparentChildren(otherSnapPoint.parentSnappable.transform);
 
     }
+
+	private void PerformSnapBehaviour(SnapPoint thisSnapPoint, SnapPoint otherSnapPoint) { 
+
+		var targetBehavior = SnapBehaviour.Default;
+
+		var thisBehavior = thisSnapPoint.GetComponentInParent<Snappable> ().SnapBehaviour;
+		var otherBehavior = thisSnapPoint.GetComponentInParent<Snappable> ().SnapBehaviour;
+
+		// Both match so use that (e.g. face to face) 
+		if (thisBehavior == otherBehavior) { 
+			targetBehavior = thisBehavior;
+		}
+			
+		if (targetBehavior == SnapBehaviour.Default) { 
+			// Just move, do not change rotation 
+			this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
+		} else if (targetBehavior == SnapBehaviour.RotateFaces) { 
+			// Match rotation and move
+			this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
+			this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
+		}
+	}
 
 
     private void ReparentChildren(Transform newParent)

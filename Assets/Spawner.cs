@@ -4,7 +4,6 @@ using UnityEngine;
 using VRTK;
 
 [RequireComponent(typeof(VRTK_InteractableObject))]
-
 public class Spawner: MonoBehaviour {
     private VRTK_InteractableObject interactable;
 
@@ -36,7 +35,7 @@ public class Spawner: MonoBehaviour {
     private void Spawn()
     {
         var controller = interactable.GetUsingObject();
-        var cube = Instantiate(prefab, this.transform.position + this.transform.up * 0.2f, Quaternion.identity);
+        var cube = Instantiate(prefab, this.transform.position + this.transform.up * 0.3f, Quaternion.identity);
         cube.GetComponent<Rigidbody>().angularVelocity = Vector3.one * 0.1f;
     }
 
