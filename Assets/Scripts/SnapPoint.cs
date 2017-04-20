@@ -28,6 +28,7 @@ public class SnapPoint : MonoBehaviour {
 
     private void OnTriggerEnter(Collider other)
     {
+
         var otherSnapPoint = other.gameObject.GetComponent<SnapPoint>();
 
         if (otherSnapPoint == null) return;                                         // not a snap point

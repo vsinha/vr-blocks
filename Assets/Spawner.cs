@@ -5,9 +5,10 @@ using VRTK;
 
 [RequireComponent(typeof(VRTK_InteractableObject))]
 
-public class CubeSpawner : MonoBehaviour {
+public class Spawner: MonoBehaviour {
     private VRTK_InteractableObject interactable;
-    private GameObject cubePrefab;
+
+    public GameObject prefab;
 
     bool isUsing = false;
 
@@ -17,8 +18,6 @@ public class CubeSpawner : MonoBehaviour {
         interactable.InteractableObjectUsed += CubeSpawner_InteractableObjectUsed;
         interactable.InteractableObjectUntouched += Interactable_InteractableObjectUntouched;
         interactable.InteractableObjectTouched += Interactable_InteractableObjectTouched;
-
-        cubePrefab = (GameObject)Resources.Load("Prefabs/ParentedBlock", typeof(GameObject));
 	}
 
     private void Interactable_InteractableObjectTouched(object sender, InteractableObjectEventArgs e)
@@ -31,20 +30,20 @@ public class CubeSpawner : MonoBehaviour {
 
     private void CubeSpawner_InteractableObjectUsed(object sender, InteractableObjectEventArgs e)
     {
-        SpawnCube();
+        Spawn();
     }
 
-    private void SpawnCube()
+    private void Spawn()
     {
         var controller = interactable.GetUsingObject();
-        var cube = Instantiate(cubePrefab, this.transform.position + this.transform.up * 0.2f, Quaternion.identity);
+        var cube = Instantiate(prefab, this.transform.position + this.transform.up * 0.2f, Quaternion.identity);
         cube.GetComponent<Rigidbody>().angularVelocity = Vector3.one * 0.1f;
     }
 
     // Update is called once per frame
     void Update () {
         if (isUsing) {
-            SpawnCube();
+            Spawn();
         }
 	}
 }
