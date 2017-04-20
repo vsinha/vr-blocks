@@ -78,7 +78,7 @@ public class Snappable : MonoBehaviour {
         Physics.IgnoreCollision(thisSnapPoint.coll, otherSnapPoint.coll);
 
         // move & rotate
-        this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
+       // this.transform.rotation = RotateToMatchSnapPoints(thisSnapPoint, otherSnapPoint);
         this.transform.position = MoveToMatchSnapPoints(thisSnapPoint, otherSnapPoint, _snapSpacing);
 
         // reparent all children
