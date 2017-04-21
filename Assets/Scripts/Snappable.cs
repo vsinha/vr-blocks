@@ -244,7 +244,7 @@ public class Snappable : MonoBehaviour {
         // enabled unless some button is being held down
         var grabber = interactable.GetGrabbingObject();
         if (grabber) {
-            return !grabber.GetComponent<VRTK_ControllerEvents>().buttonOnePressed;
+			return !(grabber.GetComponent<VRTK_ControllerEvents>().buttonOnePressed || grabber.GetComponent<VRTK_ControllerEvents>().touchpadPressed);
         }
         return true; 
     }
