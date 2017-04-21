@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class NotificationManager : MonoBehaviour {
 
@@ -23,6 +24,10 @@ public class NotificationManager : MonoBehaviour {
 
 	internal void OnNotification(MessageAction<NotificationData> obj)
 	{
+		if (String.IsNullOrEmpty (obj.data.applicationName)) { 
+			return; 
+		}
+
 		var instance = GameObject.Instantiate (NotificationPrefab, Vector3.zero, this.transform.rotation);
 
 		var message = instance.GetComponent<NotificationMessage> ();
