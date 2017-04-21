@@ -11,6 +11,7 @@ public class AdjustCameraRigPosition : MonoBehaviour {
 
     public bool bindLeftController;
     public bool bindRightController;
+    public bool bindSpacebar;
 
     private Vector3 originalPosition;
 
@@ -29,7 +30,6 @@ public class AdjustCameraRigPosition : MonoBehaviour {
         if (bindRightController == true) {
             BindController(VRTK_DeviceFinder.GetControllerRightHand());
         }
-
     }
 
     private void BindController(GameObject controller)
@@ -64,5 +64,12 @@ public class AdjustCameraRigPosition : MonoBehaviour {
         }
 
         this.transform.position += target.transform.position - head.transform.position;
+    }
+
+    private void Update()
+    {
+        if (bindSpacebar == true && Input.GetKeyUp(KeyCode.Space)) {
+            AdjustPosition();
+        }
     }
 }

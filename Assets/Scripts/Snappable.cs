@@ -41,7 +41,6 @@ public class Snappable : MonoBehaviour {
         snapPoints = transform.GetComponentsInChildren<SnapPoint>().ToList();
     }
 
-
     private void Interactable_InteractableObjectUngrabbed(object sender, InteractableObjectEventArgs e)
     {
         if (rb.velocity.magnitude > _throwThresholdVelocity) {
@@ -238,6 +237,16 @@ public class Snappable : MonoBehaviour {
     internal bool IsGrabbed()
     {
         return interactable.IsGrabbed();
+    }
+
+    internal bool IsSnapEnabled()
+    {
+        // enabled unless some button is being held down
+        var grabber = interactable.GetGrabbingObject();
+        if (grabber) {
+            return !grabber.GetComponent<VRTK_ControllerEvents>().buttonOnePressed;
+        }
+        return true; 
     }
 
     internal void Detonate()
