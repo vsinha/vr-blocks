@@ -200,7 +200,14 @@ namespace VoxDraw
 
         internal float Distance(PathPoint2 p2)
         {
-            return Vector2.Distance(this.localPosition, p2.localPosition);
+            return Dist(this, p2);
+        }
+
+        private float Dist(PathPoint2 p1, PathPoint2 p2)
+        {
+            float dx = p2.X - p1.X;
+            float dy = p2.Y - p1.Y;
+            return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
         public float X

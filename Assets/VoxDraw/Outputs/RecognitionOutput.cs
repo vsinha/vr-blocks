@@ -36,23 +36,23 @@ namespace VoxDraw.Outputs
         public void Process(PathDrawingContext context)
         {
 
-            var prefab = Resources.Load<GameObject>("PhysicsLine");
-            var instance = GameObject.Instantiate<GameObject>(prefab, context.Root.position, context.Root.rotation);
+            //var prefab = Resources.Load<GameObject>("PhysicsLine");
+            //var instance = GameObject.Instantiate<GameObject>(prefab, context.Root.position, context.Root.rotation);
 
-            var lineRenderer = instance.GetComponent<VRLineRenderer>();
+            //var lineRenderer = instance.GetComponent<VRLineRenderer>();
 
-            var avgDepth = context.Positions.Average(p => p.z);
+            //var avgDepth = context.Positions.Average(p => p.z);
 
 
 
-            Vector3[] points = ApplyDepth(Flatten(context.Positions), avgDepth).ToArray();
+            //Vector3[] points = ApplyDepth(Flatten(context.Positions), avgDepth).ToArray();
 
-            lineRenderer.SetPositions(points, true);
+            //lineRenderer.SetPositions(points, true);
 
-            var collider = instance.GetComponent<BoxCollider>();
-            collider.size = context.LocalBounds.size;
-            collider.center = context.LocalCenter;
-            collider.isTrigger = false;
+            //var collider = instance.GetComponent<BoxCollider>();
+            //collider.size = context.LocalBounds.size;
+            //collider.center = context.LocalCenter;
+            //collider.isTrigger = false;
 
             var r = Recognize(context);
             Debug.LogWarningFormat("{0} - {1}", r.match.name, r.score);
@@ -68,9 +68,13 @@ namespace VoxDraw.Outputs
 
             foreach(var u in this.gestures)
             {
-                float[] best = GoldenSectionSearch(normalizedInput, u.points, -45f * Mathf.Deg2Rad, +45f * Mathf.Deg2Rad, 2.0f * Mathf.Deg2Rad);
+                //float[] best = GoldenSectionSearch(normalizedInput, u.points, -45f * Mathf.Deg2Rad, +45f * Mathf.Deg2Rad, 2.0f * Mathf.Deg2Rad);
 
-                float score = 1.0f - best[0] / HalfDiagonal;
+                //float score = 1.0f - best[0] / HalfDiagonal;
+
+                float[] best = OptimalCosineDistance(Vectorize(u.points).ToArray(), Vectorize(normalizedInput).ToArray());
+                float score = 1.0f / best[0];
+
                 matches.Add(new MatchResult()
                 {
                     match = u,
@@ -86,11 +90,27 @@ namespace VoxDraw.Outputs
 
 			Debug.Log ("MATCH!!!!");
 			Debug.Log (DebugOutputPath (ordered.First ().match.points));
+            Debug.Log (DebugOutputPath(ordered.Last().match.points));
 
             return ordered.First();
         }
 
-		private string DebugOutputPath( PathPoint2[] data) { 
+        private float[] OptimalCosineDistance(float[] v1, float[] v2)
+        {
+            float a = 0.0f;
+            float b = 0.0f;
+            for (int i = 0; i < Math.Min(v1.Length, v2.Length); i += 2)
+            {
+                a += v1[i] * v2[i] + v1[i + 1] * v2[i + 1];
+                b += v1[i] * v2[i + 1] - v1[i + 1] * v2[i];
+            }
+            float angle = Mathf.Atan(b / a);
+            float distance = Mathf.Acos(a * Mathf.Cos(angle) + b * Mathf.Sin(angle));
+            return new float[3] { distance, angle * Mathf.Rad2Deg, 0.0f }; // distance, angle, calls to pathdist
+        }
+
+
+        private string DebugOutputPath( PathPoint2[] data) { 
 			StringBuilder sb = new StringBuilder (); 
 
 			foreach (var point in data) { 
@@ -165,6 +185,24 @@ namespace VoxDraw.Outputs
             return new float[3] { Mathf.Min(distance1, distance2), Mathf.Rad2Deg * ((b + a) / 2.0f), i }; // distance, angle, calls to pathdist
         }
 
+        private IEnumerable<float> Vectorize(IEnumerable<PathPoint2> points)
+        {
+            float sum = 0.0f;
+            List<float> vector = new List<float>();
+            foreach(var point in points) { 
+                vector.Add(point.X);
+                vector.Add(point.Y);
+                sum += point.X * point.X + point.Y * point.Y;
+            }
+            float magnitude = Mathf.Sqrt(sum);
+            for (int i = 0; i < vector.Count; i++)
+            {
+                vector[i] /= magnitude;
+            }
+            return vector;
+
+        }
+
         private float PathDistance(PathPoint2[] path1, PathPoint2[] path2)
         {
             float distance = 0;
@@ -186,21 +224,33 @@ namespace VoxDraw.Outputs
             float averageDistance = PathLength(context2d) / (context2d.Length - 1);
 			var resampled = Resample(context2d, averageDistance).ToArray();
 
-            var angleToStart = Mathf.Deg2Rad * Vector2.Angle(GetCentroid(resampled), resampled.First().localPosition);
+            var angleToStart = Angle(GetCentroidPP2(resampled), resampled[0], false);
 			resampled = RotatePoints(resampled, angleToStart).ToArray();
-            //if (vectorOrigin)
-            //{
-            //    resampled = ScalePoints(resampled, new Vector2(DX / 2, DX / 2));
-            //    resampled = TranslatePoints(resampled, new Vector2(DX / 2, DX / 2));
-            //    resampled = TranslatePoints(resampled, Vector2.zero);
-            //}
-            //else
-            //{
 			resampled = ScalePoints(resampled, new Vector2(DX, DX)).ToArray();
 			resampled = TranslatePoints(resampled, Vector2.zero).ToArray();
-            // }
 
 			return resampled;
+        }
+
+        public static float Angle(PathPoint2 start, PathPoint2 end, bool positiveOnly)
+        {
+            float radians = 0.0f;
+            if (start.X != end.X)
+            {
+                radians = Mathf.Atan2(end.Y - start.Y, end.X - start.X);
+            }
+            else // pure vertical movement
+            {
+                if (end.Y < start.Y)
+                    radians = -Mathf.PI / 2.0f; // -90 degrees is straight up
+                else if (end.Y > start.Y)
+                    radians = +Mathf.PI / 2.0f; // 90 degrees is straight down
+            }
+            if (positiveOnly && radians < 0.0)
+            {
+                radians += Mathf.PI * 2.0f;
+            }
+            return radians;
         }
 
         private IEnumerable<PathPoint2> TranslatePoints(IEnumerable<PathPoint2> points, Vector2 toPoint)
@@ -287,6 +337,11 @@ namespace VoxDraw.Outputs
             }
 
             return new Vector2(xSum / c, ySum / c);
+        }
+
+        PathPoint2 GetCentroidPP2(IEnumerable<PathPoint2> path)
+        {
+            return new PathPoint2() { localPosition = GetCentroid(path) };
         }
 
         float PathLength(IEnumerable<PathPoint2> path)
