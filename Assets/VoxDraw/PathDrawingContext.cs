@@ -135,6 +135,14 @@ namespace VoxDraw
             }
         }
 
+        public IEnumerable<Vector3> WorldPositions
+        {
+            get
+            {
+                return this.localPoints.Select(p => this.Root.TransformPoint(p.localPosition));
+            }
+        }
+
         public IEnumerable<PathPoint2> ConvertTo2d(/* TODO: take in some root rotation */)
         {
             return this.Points.Select(p => p.To2d());

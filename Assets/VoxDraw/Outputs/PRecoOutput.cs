@@ -58,26 +58,95 @@ namespace VoxDraw.Outputs
 
         private void GenerateFromResult(RecognizerResult result, PathDrawingContext context)
         {
-            Dictionary<string, string> prefabMap = new Dictionary<string, string>()
+            Dictionary<string, Action<PathDrawingContext>> prefabMap = new Dictionary<string, Action<PathDrawingContext>>()
             {
-                { "circle", @"Prefabs/SnappableSphere" },
-                { "square", @"Prefabs/ParentedBlock" }
+                { "circle", MakeSphere },
+                { "square", MakeSquare },
+                { "line", MakeLine },
+                { "arrow", MakeArrow }
             };
 
-            string prefabName = null;
-            if(prefabMap.TryGetValue(result.Class, out prefabName))
+            Action<PathDrawingContext> callback = null;
+            if(prefabMap.TryGetValue(result.Class, out callback))
             {
-                var prefab = Resources.Load<GameObject>(prefabName);
-                var instance = GameObject.Instantiate(prefab, context.WorldCenter, Quaternion.identity);
-                var size = Math.Max(context.WorldBounds.size.x, context.WorldBounds.size.y);
-                var globalScale = (Vector3.one / 0.05f) * (size * 0.9f); // Hack
-                var lossyScale = instance.transform.lossyScale;
-                instance.transform.localScale = new Vector3(globalScale.x / lossyScale.x, globalScale.y / lossyScale.y, globalScale.z / lossyScale.z);
+                callback(context);
             }
 
         }
 
+        private void MakeLine(PathDrawingContext context)
+        {
+            const float depth = 0.025f;
+            const float cylinderFactor = 0.5f;
 
+            var worldX = context.WorldBounds.size.x;
+            var worldY = context.WorldBounds.size.y;
+
+            var cyclinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+
+            // Scale to fixed x and z with Y (up) being the largest extent of the line.
+            // TODO: We could likely take the aggregate distance of the line assuming limited curves 
+            cyclinder.transform.localScale = new Vector3(depth, Math.Max(worldX, worldY) * cylinderFactor, depth);
+
+            // Get angle between start and end
+            var p = context.WorldPositions.ToArray();
+            var dir = p[p.Length - 1] - p[0];
+            var mid = (dir) / 2.0f + p[0];
+
+            // Transform the cylinder to be across the path of the line with the correct rotation 
+            cyclinder.transform.SetPositionAndRotation(mid, Quaternion.FromToRotation(Vector3.up, dir));
+            
+            // Create an empty snappable object and assign the cylinder as the "mesh"  
+            const string prefabName = @"Prefabs/StubSnappable";
+            var prefab = Resources.Load<GameObject>(prefabName);
+            var instance = GameObject.Instantiate(prefab, cyclinder.transform.position, Quaternion.identity);
+            var assign = instance.GetComponent<SnappableAssign>();
+            
+            assign.AssignSnappableChild(cyclinder);
+
+            // Create snap points in *local space" at the start and of the "line" 
+            var first = assign.GenerateSnapPoint();
+            first.transform.localPosition = new Vector3(0, +1, 0); // Far extent
+            first.transform.localScale = Vector3.one * (depth * 5); // Just feels right, TODO: Make more formal 
+            first.transform.localRotation = Quaternion.Euler(180, 0, -90);
+
+            var last = assign.GenerateSnapPoint();
+            last.transform.localPosition = new Vector3(0, -1, 0); // Near extent 
+            last.transform.localScale = Vector3.one * (depth * 5);
+            last.transform.localRotation = Quaternion.Euler(180, 0, 90);
+
+        }
+
+        private void MakeArrow(PathDrawingContext context)
+        {
+            // TODO 
+        }
+
+        private void MakeSphere(PathDrawingContext context)
+        {
+            const string prefabName = @"Prefabs/SnappableSphere";
+
+            var prefab = Resources.Load<GameObject>(prefabName);
+            var instance = GameObject.Instantiate(prefab, context.WorldCenter, Quaternion.identity);
+            PlaceInstance(context, instance);
+        }
+
+        private void MakeSquare(PathDrawingContext context)
+        {
+            const string prefabName = @"Prefabs/ParentedBlock";
+
+            var prefab = Resources.Load<GameObject>(prefabName);
+            var instance = GameObject.Instantiate(prefab, context.WorldCenter, Quaternion.identity);
+            PlaceInstance(context, instance);
+        }
+
+        private static void PlaceInstance(PathDrawingContext context, GameObject instance, float initialScale = 0.05f, float loss = 0.9f)
+        {
+            var size = Math.Max(context.WorldBounds.size.x, context.WorldBounds.size.y);
+            var globalScale = (Vector3.one / initialScale) * (size * loss); // Hack
+            var lossyScale = instance.transform.lossyScale;
+            instance.transform.localScale = new Vector3(globalScale.x / lossyScale.x, globalScale.y / lossyScale.y, globalScale.z / lossyScale.z);
+        }
 
         private Point[] ContextToStroke(PathDrawingContext context)
         {
