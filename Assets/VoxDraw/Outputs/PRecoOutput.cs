@@ -128,7 +128,7 @@ namespace VoxDraw.Outputs
 
             var prefab = Resources.Load<GameObject>(prefabName);
             var instance = GameObject.Instantiate(prefab, context.WorldCenter, Quaternion.identity);
-            PlaceInstance(context, instance);
+            instance.transform.localScale = GenerateScale(context, instance);
         }
 
         private void MakeSquare(PathDrawingContext context)
@@ -137,16 +137,44 @@ namespace VoxDraw.Outputs
 
             var prefab = Resources.Load<GameObject>(prefabName);
             var instance = GameObject.Instantiate(prefab, context.WorldCenter, Quaternion.identity);
-            PlaceInstance(context, instance);
+            var scaleChild = instance.transform.FindChild("Block");
+
+            scaleChild.transform.localScale = 0.05f * GenerateScale(context, instance);
+
+            var worldSize = context.WorldBounds.size;
+
+            if(worldSize.x > worldSize.y)
+            {
+                // Apply ratio to scale 
+
+                var baseDim = scaleChild.transform.localScale.x;
+                var smallDim = baseDim * (worldSize.y / worldSize.x);
+                scaleChild.transform.localScale = new Vector3(baseDim, smallDim, smallDim);
+                
+            }
+            else if (worldSize.y > worldSize.x)
+            {
+                var baseDim = scaleChild.transform.localScale.x;
+                var smallDim = baseDim * (worldSize.x / worldSize.y);
+                scaleChild.transform.localScale = new Vector3(smallDim, baseDim, smallDim);
+            }
+
+            instance.transform.LookAt(GetCameraPos());
         }
 
-        private static void PlaceInstance(PathDrawingContext context, GameObject instance, float initialScale = 0.05f, float loss = 0.9f)
+        private Vector3 GetCameraPos()
+        {
+            return VRTK.VRTK_SDK_Bridge.GetHeadsetCamera().position;
+        }
+
+        private static Vector3 GenerateScale(PathDrawingContext context, GameObject instance, float initialScale = 0.05f, float loss = 0.9f)
         {
             var size = Math.Max(context.WorldBounds.size.x, context.WorldBounds.size.y);
             var globalScale = (Vector3.one / initialScale) * (size * loss); // Hack
             var lossyScale = instance.transform.lossyScale;
-            instance.transform.localScale = new Vector3(globalScale.x / lossyScale.x, globalScale.y / lossyScale.y, globalScale.z / lossyScale.z);
+            return new Vector3(globalScale.x / lossyScale.x, globalScale.y / lossyScale.y, globalScale.z / lossyScale.z);
         }
+
 
         private Point[] ContextToStroke(PathDrawingContext context)
         {
